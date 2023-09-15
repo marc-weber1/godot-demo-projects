@@ -65,7 +65,8 @@ func _on_peers_pressed():
 
 
 func _on_ping_pressed():
-	ping.rpc(randf())
+	#ping.rpc(randf())
+	client.send_message("heyy")
 
 
 func _on_seal_pressed():

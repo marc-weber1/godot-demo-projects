@@ -3,6 +3,8 @@ extends "ws_webrtc_client.gd"
 var rtc_mp: WebRTCMultiplayerPeer = WebRTCMultiplayerPeer.new()
 var sealed := false
 
+var channels = {}
+
 func _init():
 	connected.connect(self._connected)
 	disconnected.connect(self._disconnected)
@@ -33,6 +35,10 @@ func stop():
 
 func _create_peer(id):
 	var peer: WebRTCPeerConnection = WebRTCPeerConnection.new()
+	
+	var debug_channel = peer.create_data_channel("chat", {"id": 1, "negotiated": true})
+	channels[peer] = debug_channel
+	
 	peer.initialize({
 		"iceServers": [ { "urls": ["stun:stun.l.google.com:19302"] } ]
 	})
@@ -42,6 +48,21 @@ func _create_peer(id):
 	if id < rtc_mp.get_unique_id(): # So lobby creator never creates offers.
 		peer.create_offer()
 	return peer
+	
+	
+func _process(delta):
+	super._process(delta)
+	# Always poll the connections frequently.
+	for peer in channels.keys():
+		peer.poll()
+		if channels[peer].get_ready_state() == WebRTCDataChannel.STATE_OPEN:
+			while channels[peer].get_available_packet_count() > 0:
+				print(String(get_path()), " received: ", channels[peer].get_packet().get_string_from_utf8())
+
+
+func send_message(msg):
+	for peer in channels.keys():
+		channels[peer].put_packet(msg.to_utf8_buffer())
 
 
 func _new_ice_candidate(mid_name, index_name, sdp_name, id):
